@@ -1,0 +1,7 @@
+nemo-restore-tabs (6.4.0) xia; urgency=medium
+
+  * Initial release
+  * Add tab saving and restoration functionality
+  * Context menu integration for tab management
+
+ -- retiarylime <retiarylime101@gmail.com>  Fri, 08 Nov 2025 10:00:00 +0000

@@ -1,0 +1,41 @@
+Nemo Restore Tabs
+=================
+
+A Nemo extension that allows users to save and restore previously opened tabs in the Nemo file manager.
+
+Features
+--------
+
+* Save currently open tabs for later restoration
+* Restore previously saved tabs
+* Clear saved tabs data
+* Simple context menu integration
+
+Installation
+------------
+
+This extension requires:
+- Nemo file manager
+- python3-nemo
+- Python 3
+
+The extension integrates with Nemo through the python-nemo bindings and provides context menu options to manage tab sessions.
+
+Usage
+-----
+
+Right-click in any empty space in Nemo to access the restore tabs options:
+
+- **Save Current Tabs**: Saves all currently open tabs
+- **Restore Saved Tabs**: Opens previously saved tabs (only shown when saved tabs exist)
+- **Clear Saved Tabs**: Removes all saved tab data
+
+Saved tab data is stored in `~/.config/nemo/restore-tabs.json`.
+
+License
+-------
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.

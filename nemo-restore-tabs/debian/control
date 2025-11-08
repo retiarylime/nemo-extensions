@@ -1,0 +1,26 @@
+Source: nemo-restore-tabs
+Section: gnome
+Priority: optional
+Maintainer: Linux Mint <root@linuxmint.com>
+Build-Depends: debhelper (>= 9),
+               python3-all,
+               python3-setuptools,
+               dh-python
+Standards-Version: 3.9.4
+Homepage: https://github.com/linuxmint/nemo-extensions
+
+Package: nemo-restore-tabs
+Architecture: all
+Depends: ${misc:Depends},
+         python3 (>= 3.4),
+         python3-nemo (>= 3.9.0),
+         gir1.2-nemo-3.0,
+         gir1.2-gtk-3.0 (>= 3.8.4~),
+         gir1.2-glib-2.0 (>= 1.38.0~),
+         gir1.2-gio-2.0
+Description: Nemo extension to restore previously opened tabs
+ Nemo Restore Tabs is a Nemo extension that allows users to save and
+ restore previously opened tabs in the Nemo file manager. It provides
+ context menu options to save current tabs, restore saved tabs, and
+ clear saved tab data. The extension integrates seamlessly with Nemo
+ through the python-nemo bindings.
