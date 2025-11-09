@@ -7,16 +7,19 @@ import subprocess
 import os
 import json
 import time
+import threading
+import shutil
 
 CONFIG_DIR = os.path.expanduser("~/.config/nemo")
 TABS_FILE = os.path.join(CONFIG_DIR, "restore-tabs.json")
 
+# Simple locks to prevent duplicate execution
+_save_lock = threading.Lock()
+_restore_lock = threading.Lock()
+_parsing_flag = threading.Event()  # Flag to prevent duplicate parsing
+
 class NemoRestoreTabsExtension(GObject.GObject, Nemo.MenuProvider):
-    """Extension that runs script in terminal and parses saved results."""
-    
-    def __init__(self):
-        super().__init__()
-        self.parsing_done = False  # Flag to prevent multiple parsing
+    """Extension that runs script and immediately parses results."""
     
     def get_background_items(self, window, file):
         """Add menu items when right-clicking on background."""
@@ -37,94 +40,139 @@ class NemoRestoreTabsExtension(GObject.GObject, Nemo.MenuProvider):
         return [item1, item2]
     
     def _run_script_callback(self, menu_item):
-        """Run the script headless and auto-parse results."""
+        """Run the bash script headless and save results immediately."""
+        if not _save_lock.acquire(blocking=False):
+            print("⏳ Save operation already in progress, skipping...")
+            return
+            
         try:
             print("🚀 Starting headless tab collection...")
-            self.parsing_done = False  # Reset flag for new run
             
-            # Create a wrapper script that saves output automatically
-            wrapper_script = '''#!/bin/bash
-# Run the original script and capture ALL output
-OUTPUT_FILE="/tmp/nemo_auto_results.txt"
-FULL_OUTPUT_FILE="/tmp/nemo_full_output.txt"
-
-# Clean old results
-rm -f "$OUTPUT_FILE" "$FULL_OUTPUT_FILE"
-
-echo "=== WRAPPER SCRIPT STARTING ===" > "$FULL_OUTPUT_FILE"
-
-# Run the script and save full output, wait for it to complete
-bash /tmp/test_nemo_tabs.sh >> "$FULL_OUTPUT_FILE" 2>&1
-SCRIPT_EXIT_CODE=$?
-
-echo "=== WRAPPER SCRIPT COMPLETED (exit code: $SCRIPT_EXIT_CODE) ===" >> "$FULL_OUTPUT_FILE"
-
-# Extract just the RESULTS section and TAB lines
-grep -A 10 "RESULTS:" "$FULL_OUTPUT_FILE" > "$OUTPUT_FILE" 2>/dev/null
-
-# If that didn't work, just copy the TAB lines
-if [ ! -s "$OUTPUT_FILE" ]; then
-    grep "^TAB[12]:" "$FULL_OUTPUT_FILE" > "$OUTPUT_FILE" 2>/dev/null
-fi
-
-echo "=== WRAPPER EXTRACTION DONE ===" >> "$FULL_OUTPUT_FILE"
-'''
+            # Small delay to ensure window is ready
+            time.sleep(0.5)
             
-            # Write wrapper script
-            with open('/tmp/nemo_auto_wrapper.sh', 'w') as f:
-                f.write(wrapper_script)
-            os.chmod('/tmp/nemo_auto_wrapper.sh', 0o755)
+            # Get the active Nemo window ID dynamically
+            try:
+                # Find active Nemo window
+                result = subprocess.run(['xdotool', 'getactivewindow'], 
+                                      capture_output=True, text=True, timeout=5)
+                if result.returncode == 0:
+                    active_window = result.stdout.strip()
+                    print(f"🔍 Active window: {active_window}")
+                    
+                    # Verify it's a Nemo window
+                    result = subprocess.run(['xdotool', 'getwindowname', active_window], 
+                                          capture_output=True, text=True, timeout=5)
+                    if result.returncode == 0 and 'nemo' in result.stdout.lower():
+                        window_id = active_window
+                        print(f"✅ Using active Nemo window: {window_id}")
+                    else:
+                        # Fall back to searching for Nemo windows
+                        result = subprocess.run(['xdotool', 'search', '--class', 'nemo'], 
+                                              capture_output=True, text=True, timeout=5)
+                        if result.returncode == 0:
+                            windows = result.stdout.strip().split('\n')
+                            window_id = windows[-1]  # Use the last (most recent) window
+                            print(f"🔧 Using most recent Nemo window: {window_id}")
+                        else:
+                            window_id = "119537674"  # Fallback
+                            print(f"⚠️ Using fallback window ID: {window_id}")
+                else:
+                    window_id = "119537674"  # Fallback
+                    print(f"⚠️ Failed to detect active window, using fallback: {window_id}")
+            except Exception as e:
+                window_id = "119537674"  # Fallback
+                print(f"⚠️ Error detecting window ({e}), using fallback: {window_id}")
             
+            # Create wrapper script
             print("📄 Wrapper script created, running headless...")
             
-            # Run wrapper headless with proper environment
-            env = os.environ.copy()
-            env['DISPLAY'] = os.environ.get('DISPLAY', ':0')
-            process = subprocess.Popen(['bash', '/tmp/nemo_auto_wrapper.sh'], 
-                                     env=env,
-                                     stdout=subprocess.DEVNULL,
-                                     stderr=subprocess.DEVNULL)
+            with open('/tmp/nemo_auto_wrapper.sh', 'w') as f:
+                f.write(f'''#!/bin/bash
+# Wrapper script for headless tab capture
+
+echo "=== WRAPPER SCRIPT STARTING ===" > /tmp/nemo_full_output.txt
+/tmp/test_nemo_tabs.sh {window_id} >> /tmp/nemo_full_output.txt 2>&1
+echo "=== WRAPPER SCRIPT COMPLETED (exit code: $?) ===" >> /tmp/nemo_full_output.txt
+echo "=== WRAPPER EXTRACTION DONE ===" >> /tmp/nemo_full_output.txt
+''')
             
-            # Schedule auto-parsing after script completion
-            import threading
-            print("⏱️  Scheduling result parsing...")
+            os.chmod('/tmp/nemo_auto_wrapper.sh', 0o755)
             
-            # Wait a bit longer to ensure script completes
-            threading.Timer(3.0, self._check_and_parse_results).start()   # 3 seconds
-            threading.Timer(7.0, self._check_and_parse_results).start()   # 7 seconds
-            threading.Timer(12.0, self._check_and_parse_results).start()  # 12 seconds
-            threading.Timer(18.0, self._check_and_parse_results).start()  # 18 seconds
+            # Run script in background and immediately parse results
+            print("🔄 Running script in background...")
+            print("🧵 Starting background monitor thread...")
+            
+            def monitor_script():
+                print("👀 Monitoring script execution...")
+                
+                # Clear any previous parsing flag
+                _parsing_flag.clear()
+                
+                # Use bash -c with explicit DISPLAY for better X11 compatibility
+                cmd = ['bash', '-c', f'DISPLAY=:0 /tmp/nemo_auto_wrapper.sh']
+                print(f"🚀 Starting subprocess: {' '.join(cmd)}")
+                
+                process = subprocess.Popen(cmd, 
+                                         stdout=subprocess.DEVNULL, 
+                                         stderr=subprocess.DEVNULL)
+                print(f"📋 Process PID: {process.pid}")
+                
+                # Start backup timer with a function that checks the flag
+                def backup_parse():
+                    if not _parsing_flag.is_set():
+                        print("⏰ Backup timer: script still running...")
+                        _parsing_flag.set()
+                        self._auto_parse_results()
+                
+                backup_timer = threading.Timer(8.0, backup_parse)
+                backup_timer.start()
+                print("⏰ Backup timer started (8 seconds)")
+                
+                # Monitor for completion with timeout
+                try:
+                    print("⌛ Waiting for script to complete...")
+                    process.wait(timeout=15)  # Maximum 15 seconds
+                    backup_timer.cancel()  # Cancel backup if script finishes first
+                    print("⏰ Backup timer cancelled - script finished")
+                    
+                    # Only parse if not already done by backup timer
+                    if not _parsing_flag.is_set():
+                        _parsing_flag.set()
+                        if process.returncode == 0:
+                            print("✅ Script completed with exit code: 0")
+                            print("🔍 Script finished, parsing results immediately...")
+                            self._auto_parse_results()
+                        else:
+                            print(f"❌ Script failed with exit code: {process.returncode}")
+                            # Try to get some debug info
+                            if os.path.exists('/tmp/nemo_full_output.txt'):
+                                with open('/tmp/nemo_full_output.txt', 'r') as f:
+                                    print(f"🔍 Debug output: {f.read()[:500]}...")
+                    else:
+                        print("🔄 Results already parsed by backup timer")
+                        
+                except subprocess.TimeoutExpired:
+                    print("⏰ Script timed out after 15 seconds")
+                    backup_timer.cancel()
+                    process.kill()
+                    if not _parsing_flag.is_set():
+                        _parsing_flag.set()
+                        print("🔍 Attempting to parse any partial results...")
+                        self._auto_parse_results()
+            
+            thread = threading.Thread(target=monitor_script)
+            thread.daemon = True
+            thread.start()
             
         except Exception as e:
             print(f"❌ Error running script: {e}")
-    
-    def _check_and_parse_results(self):
-        """Check if results are ready and parse them."""
-        try:
-            if self.parsing_done:
-                return  # Already parsed, don't do it again
-                
-            result_file = "/tmp/nemo_auto_results.txt"
-            full_output_file = "/tmp/nemo_full_output.txt"
-            
-            # Check if the wrapper script has completed
-            if os.path.exists(full_output_file):
-                with open(full_output_file, 'r') as f:
-                    content = f.read()
-                
-                # Look for completion marker
-                if "=== WRAPPER SCRIPT COMPLETED" in content:
-                    print(f"🔍 Script completed, parsing results...")
-                    self.parsing_done = True  # Mark as done
-                    self._auto_parse_results()
-                elif os.path.getsize(full_output_file) > 100:  # Has some content
-                    print(f"🔍 Script still running, but has content ({os.path.getsize(full_output_file)} bytes)...")
-                else:
-                    print(f"⏳ Script still starting at {time.strftime('%H:%M:%S')}...")
-            else:
-                print(f"⏳ Output file not created yet at {time.strftime('%H:%M:%S')}...")
-        except Exception as e:
-            print(f"❌ Error checking results: {e}")
+            import traceback
+            print(f"🔍 Traceback: {traceback.format_exc()}")
+        finally:
+            # Only release the lock if we acquired it
+            if _save_lock.locked():
+                _save_lock.release()
     
     def _auto_parse_results(self):
         """Copy and display the exact output from test_nemo_tabs.sh script."""
@@ -243,14 +291,23 @@ echo "=== WRAPPER EXTRACTION DONE ===" >> "$FULL_OUTPUT_FILE"
                     
                     print(f"💾 Saving {len(tabs)} tabs to JSON...")
                     try:
-                        with open(TABS_FILE, 'w') as f:
-                            json.dump(data, f, indent=2)
-                        print(f"✅ Saved {len(tabs)} tabs to {TABS_FILE}")
+                        # Ensure the config directory exists
+                        os.makedirs(CONFIG_DIR, exist_ok=True)
                         
-                        # Verify the saved file
-                        with open(TABS_FILE, 'r') as f:
+                        # Write to temporary file first to avoid corruption
+                        temp_file = TABS_FILE + '.tmp'
+                        with open(temp_file, 'w') as f:
+                            json.dump(data, f, indent=2)
+                        
+                        # Verify the temporary file before moving
+                        with open(temp_file, 'r') as f:
                             verify_data = json.load(f)
-                        print(f"✅ JSON file verified: {len(verify_data.get('tabs', []))} tabs")
+                        print(f"✅ Temporary JSON file verified: {len(verify_data.get('tabs', []))} tabs")
+                        
+                        # Atomically move the verified file
+                        import shutil
+                        shutil.move(temp_file, TABS_FILE)
+                        print(f"✅ Saved {len(tabs)} tabs to {TABS_FILE}")
                         
                     except Exception as save_error:
                         print(f"❌ Error saving JSON: {save_error}")
@@ -266,6 +323,15 @@ echo "=== WRAPPER EXTRACTION DONE ===" >> "$FULL_OUTPUT_FILE"
     
     def _restore_tabs_callback(self, menu_item):
         """Restore saved tabs using nemo --tabs command."""
+        # Wait a moment if save operation is in progress
+        if _save_lock.locked():
+            print("⏳ Waiting for save operation to complete...")
+            time.sleep(2)
+            
+        if not _restore_lock.acquire(blocking=False):
+            print("⏳ Restore operation already in progress, skipping...")
+            return
+            
         try:
             print("📂 Starting tab restoration...")
             
@@ -291,10 +357,28 @@ echo "=== WRAPPER EXTRACTION DONE ===" >> "$FULL_OUTPUT_FILE"
             print(f"📄 Raw file content ({len(raw_content)} chars):")
             print(f"'{raw_content[:200]}{'...' if len(raw_content) > 200 else ''}")
             
-            # Try to parse JSON
+            # Force a fresh read of the file
+            import importlib
+            import sys
+            if TABS_FILE in sys.modules:
+                importlib.reload(sys.modules[TABS_FILE])
+            
+            # Try to parse JSON with better error handling
             try:
                 with open(TABS_FILE, 'r') as f:
-                    data = json.load(f)
+                    content = f.read().strip()
+                
+                # Check for common corruption patterns
+                if content.count('{') != content.count('}'):
+                    print(f"❌ JSON has mismatched braces: {content.count('{')} {{ vs {content.count('}')} }}")
+                    print(f"   Attempting to fix...")
+                    
+                    # Try to find the last valid closing brace
+                    if content.endswith('}}'):
+                        content = content[:-1]
+                        print(f"   Removed extra closing brace")
+                
+                data = json.loads(content)
                 print(f"✅ JSON parsed successfully")
             except json.JSONDecodeError as json_error:
                 print(f"❌ JSON decode error: {json_error}")
@@ -308,6 +392,13 @@ echo "=== WRAPPER EXTRACTION DONE ===" >> "$FULL_OUTPUT_FILE"
                 return
             
             print(f"📋 Found {len(tabs)} saved tabs:")
+            
+            # Debug: Show what we actually read
+            print(f"🔍 File timestamp: {data.get('timestamp', 'unknown')}")
+            for i, tab in enumerate(tabs):
+                path = tab.get('path', 'unknown')
+                tab_timestamp = tab.get('timestamp', 'unknown')
+                print(f"  {i+1}. {path} (saved at: {tab_timestamp})")
             
             # Build the nemo --tabs command
             tab_paths = []
@@ -327,27 +418,27 @@ echo "=== WRAPPER EXTRACTION DONE ===" >> "$FULL_OUTPUT_FILE"
             nemo_command = ['nemo', '--tabs'] + tab_paths
             print(f"🚀 Executing: {' '.join(nemo_command)}")
             
-            # Run the command
-            result = subprocess.run(nemo_command, 
-                                  capture_output=True, 
-                                  text=True, 
-                                  timeout=10)
-            
-            if result.returncode == 0:
+            # Run the command - nemo --tabs returns immediately
+            try:
+                # Use Popen for truly non-blocking execution
+                process = subprocess.Popen(nemo_command, 
+                                         stdout=subprocess.DEVNULL, 
+                                         stderr=subprocess.DEVNULL)
+                
                 print(f"✅ Successfully restored {len(tab_paths)} tabs!")
-                print("   New Nemo window opened with all tabs")
-            else:
-                print(f"❌ Command failed with return code: {result.returncode}")
-                if result.stderr:
-                    print(f"   Error: {result.stderr.strip()}")
-                if result.stdout:
-                    print(f"   Output: {result.stdout.strip()}")
-            
-        except FileNotFoundError:
-            print("❌ nemo command not found")
-        except subprocess.TimeoutExpired:
-            print("❌ Command timed out")
+                print("   New tabs opened in existing Nemo window")
+                print(f"   Process ID: {process.pid}")
+                    
+            except FileNotFoundError:
+                print("❌ nemo command not found")
+            except Exception as e:
+                print(f"❌ Error restoring tabs: {e}")
+                
         except Exception as e:
-            print(f"❌ Error restoring tabs: {e}")
+            print(f"❌ Error in restore function: {e}")
             import traceback
             print(f"🔍 Traceback: {traceback.format_exc()}")
+        finally:
+            # Only release the lock if we acquired it
+            if _restore_lock.locked():
+                _restore_lock.release()
