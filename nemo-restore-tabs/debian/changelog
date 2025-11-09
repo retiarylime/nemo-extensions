@@ -1,7 +1,10 @@
 nemo-restore-tabs (6.4.0) xia; urgency=medium
 
   * Initial release
-  * Add tab saving and restoration functionality
-  * Context menu integration for tab management
+  * Add automatic tab saving and restoration functionality
+  * Real-time monitoring of tab changes and location changes
+  * Auto-restore tabs on Nemo startup
+  * Background saving with intelligent throttling
+  * Optional manual save controls via context menu
 
  -- retiarylime <retiarylime101@gmail.com>  Fri, 08 Nov 2025 10:00:00 +0000

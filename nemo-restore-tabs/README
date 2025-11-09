@@ -1,15 +1,35 @@
 Nemo Restore Tabs
 =================
 
-A Nemo extension that allows users to save and restore previously opened tabs in the Nemo file manager.
+A Nemo extension that automatically saves and restores previously opened tabs in the Nemo file manager. **This extension restores actual tabs, not separate windows.**
 
 Features
 --------
 
-* Save currently open tabs for later restoration
-* Restore previously saved tabs
-* Clear saved tabs data
-* Simple context menu integration
+* **Automatic Tab Scanning**: Uses keyboard shortcuts to scan all open tabs in the active window
+* **True Tab Restoration**: Restores tabs as actual tabs within the same Nemo window (not separate windows)
+* **Automatic Save & Restore**: Continuously saves tab state and restores on Nemo restart
+* **Keyboard Shortcut Integration**: Uses Nemo's built-in keyboard shortcuts for tab navigation
+* **Real-time Detection**: Automatically detects when tabs are opened, closed, or navigated
+* **Manual Controls**: Optional manual save/restore via context menu
+
+How It Works
+------------
+
+The extension uses keyboard automation (similar to the Nautilus save_tabs extension) to:
+
+1. **Tab Scanning**: Uses `Alt+1`, `Ctrl+Page_Down` to navigate through all open tabs
+2. **Location Detection**: Uses `Ctrl+L` to access the location bar and capture paths
+3. **Tab Restoration**: Uses `Ctrl+T` to create new tabs and navigate to saved locations
+4. **Automatic Operation**: Scans and saves tabs in the background, restores on startup
+
+### Keyboard Shortcuts Used:
+- `Alt+1` - Go to first tab
+- `Ctrl+Page_Down` - Next tab  
+- `Ctrl+Page_Up` - Previous tab
+- `Ctrl+L` - Focus location bar
+- `Ctrl+T` - Create new tab
+- `Ctrl+A`, `Ctrl+C` - Select and copy current path
 
 Installation
 ------------
@@ -18,19 +38,168 @@ This extension requires:
 - Nemo file manager
 - python3-nemo
 - Python 3
+- **xdotool** (for keyboard automation)
+- **xclip** (for clipboard access)
 
-The extension integrates with Nemo through the python-nemo bindings and provides context menu options to manage tab sessions.
+### Prerequisites
+
+First, ensure you have the required dependencies installed:
+
+```bash
+# On Ubuntu/Debian/Linux Mint:
+sudo apt update
+sudo apt install nemo python3-nemo python3-gi xdotool xclip
+
+# On Fedora:
+sudo dnf install nemo python3-nemo python3-gobject xdotool xclip
+
+# On Arch Linux:
+sudo pacman -S nemo python-nemo python-gobject xdotool xclip
+```
+
+### Method 1: User Installation (Recommended)
+
+Install for the current user only (no root privileges required):
+
+```bash
+# Navigate to the extension directory
+cd nemo-restore-tabs
+
+# Create user extensions directory
+mkdir -p ~/.local/share/nemo-python/extensions
+
+# Copy the extension
+cp src/nemo-restore-tabs.py ~/.local/share/nemo-python/extensions/
+```
+
+### Method 2: System-wide Installation
+
+Install for all users (requires sudo):
+
+```bash
+# Navigate to the extension directory
+cd nemo-restore-tabs
+
+# Copy to system directory
+sudo cp src/nemo-restore-tabs.py /usr/share/nemo-python/extensions/
+```
+
+### Method 3: Development Installation
+
+For development and testing:
+
+```bash
+# Create symbolic link for easy updates
+ln -s $(pwd)/src/nemo-restore-tabs.py ~/.local/share/nemo-python/extensions/
+```
+
+### Method 4: Package Installation
+
+Build and install as a Debian package:
+
+```bash
+# Install build dependencies
+sudo apt install debhelper python3-all python3-setuptools dh-python
+
+# Build the package
+dpkg-buildpackage -us -uc
+
+# Install the package
+sudo dpkg -i ../nemo-restore-tabs_*.deb
+```
+
+### Activation
+
+After installation:
+
+1. **Restart Nemo** completely:
+   ```bash
+   nemo -q    # Quit all Nemo instances
+   nemo       # Start Nemo again
+   ```
+
+2. **Verify Installation**: 
+   - Open Nemo
+   - Right-click in an empty area
+   - You should see "Save Current Tabs Now" in the context menu
+   - The extension will automatically start saving and restoring tabs
+
+### Troubleshooting
+
+If the extension doesn't appear:
+
+1. **Check Extension Location**:
+   ```bash
+   ls ~/.local/share/nemo-python/extensions/nemo-restore-tabs.py
+   # or for system-wide:
+   ls /usr/share/nemo-python/extensions/nemo-restore-tabs.py
+   ```
+
+2. **Check Dependencies**:
+   ```bash
+   python3 -c "import gi; gi.require_version('Nemo', '3.0'); from gi.repository import Nemo"
+   which xdotool
+   which xclip
+   ```
+
+3. **Check Nemo Python Support**:
+   ```bash
+   dpkg -l | grep python.*nemo
+   ```
+
+4. **View Debug Output**:
+   ```bash
+   nemo -q
+   nemo --debug 2>&1 | grep -i restore
+   ```
+
+### Uninstallation
+
+To remove the extension:
+
+```bash
+# User installation:
+rm ~/.local/share/nemo-python/extensions/nemo-restore-tabs.py
+
+# System-wide installation:
+sudo rm /usr/share/nemo-python/extensions/nemo-restore-tabs.py
+
+# Package installation:
+sudo apt remove nemo-restore-tabs
+```
 
 Usage
 -----
 
-Right-click in any empty space in Nemo to access the restore tabs options:
+The extension works automatically without user intervention:
 
-- **Save Current Tabs**: Saves all currently open tabs
-- **Restore Saved Tabs**: Opens previously saved tabs (only shown when saved tabs exist)
-- **Clear Saved Tabs**: Removes all saved tab data
+- **Opening Nemo**: Previously opened tabs are automatically restored as actual tabs
+- **Working with Tabs**: As you open, close, or navigate tabs, changes are automatically saved
+- **Closing Nemo**: All tab information is preserved for the next session
 
-Saved tab data is stored in `~/.config/nemo/restore-tabs.json`.
+Optional manual controls are available via right-click context menu:
+
+- **Save Current Tabs Now**: Force immediate save of current tabs
+- **Restore Saved Tabs Now**: Manually restore saved tabs
+- **Status Display**: Shows how many tabs are currently saved
+
+Storage
+-------
+
+Tab data is automatically stored in `~/.config/nemo/restore-tabs.json` with:
+- File paths of opened tabs
+- Timestamps for each save operation  
+- Version information for future compatibility
+
+The file is updated automatically as you work, ensuring minimal data loss.
+
+**Important Notes**
+-------------------
+
+- The extension uses keyboard automation, so avoid using keyboard shortcuts while tab restoration is in progress
+- xdotool and xclip are required for the automation to work
+- The extension restores tabs as actual tabs within the same window, not as separate windows
+- Tab restoration happens automatically when Nemo starts
 
 License
 -------

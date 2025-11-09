@@ -9,7 +9,7 @@ setup(
     packages=[],
     name="nemo-restore-tabs",
     version="6.4.0",
-    description="Restore previously opened tabs in Nemo file manager",
+    description="Automatically save and restore opened tabs in Nemo file manager",
     author="Linux Mint",
     author_email="root@linuxmint.com",
     url="https://github.com/linuxmint/nemo-extensions",

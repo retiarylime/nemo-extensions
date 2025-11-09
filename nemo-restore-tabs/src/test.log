@@ -1,0 +1,714 @@
+Terminated
+Nemo Restore Tabs extension initialized (Address Bar Test)
+=== ADDRESS BAR TEST ===
+Expected path: /home/rl/.github
+Window focused
+
+--- Testing Ctrl+L (ctrl+l) ---
+  Clipboard: ''
+  ❌ FAILED: Ctrl+L gave empty clipboard
+
+--- Testing Alt+D (alt+d) ---
+  Clipboard: ''
+  ❌ FAILED: Alt+D gave empty clipboard
+
+--- Testing F6 (F6) ---
+  Clipboard: '#!/usr/bin/env python3
+
+import gi
+gi.require_version('Nemo', '3.0')
+from gi.repository import Nemo, GObject
+import os
+import json
+import time
+
+CONFIG_DIR = os.path.expanduser("~/.config/nemo")
+TABS_FILE = os.path.join(CONFIG_DIR, "restore-tabs.json")
+
+class TabsManager:
+    """Handles saving and loading tab information."""
+    
+    @staticmethod
+    def save_tabs(tabs_data):
+        """Save tabs data to JSON file."""
+        try:
+            os.makedirs(CONFIG_DIR, exist_ok=True)
+            with open(TABS_FILE, 'w') as f:
+                json.dump(tabs_data, f, indent=2)
+            return True
+        except Exception as e:
+            print(f"Failed to save tabs: {e}")
+            return False
+    
+    @staticmethod
+    def load_tabs():
+        """Load tabs data from JSON file."""
+        try:
+            if os.path.exists(TABS_FILE):
+                with open(TABS_FILE, 'r') as f:
+                    return json.load(f)
+        except Exception as e:
+            print(f"Failed to load tabs: {e}")
+        return []
+
+class NemoRestoreTabsExtension(GObject.GObject, Nemo.MenuProvider):
+    """Simple extension for tab saving and restoration."""
+    
+    def __init__(self):
+        """Initialize the extension."""
+        super().__init__()
+        print("Nemo Restore Tabs extension initialized")
+    
+    def get_background_items(self, window, current_folder):
+        """Return context menu items for background clicks."""
+        if not current_folder or current_folder.get_uri_scheme() != 'file':
+            return []
+        
+        items = []
+        
+        # Manual save option
+        save_item = Nemo.MenuItem(
+            name='NemoRestoreTabs::manual_save',
+            label='Save Current Tabs Now',
+            tip='Manually save all currently open tabs'
+        )
+        save_item.connect('activate', self._manual_save_tabs, current_folder)
+        items.append(save_item)
+        
+        # Manual restore option
+        restore_item = Nemo.MenuItem(
+            name='NemoRestoreTabs::manual_restore',
+            label='Restore Saved Tabs',
+            tip='Restore previously saved tabs'
+        )
+        restore_item.connect('activate', self._manual_restore_tabs, window)
+        items.append(restore_item)
+        
+        return items
+    
+    def _manual_save_tabs(self, menu_item, current_folder):
+        """Manually save the current tab."""
+        try:
+            # Get the path from current_folder parameter
+            if current_folder and hasattr(current_folder, 'get_path'):
+                path = current_folder.get_path()
+                if path:
+                    tabs_data = [{
+                        'path': path,
+                        'timestamp': time.time(),
+                        'active': True
+                    }]
+                    
+                    if TabsManager.save_tabs(tabs_data):
+                        print(f"Saved current location: {path}")
+                    else:
+                        print("Failed to save tabs")
+                    return
+            
+            print("Could not determine current location from folder")
+        except Exception as e:
+            print(f"Error in manual save: {e}")
+    
+    def _manual_restore_tabs(self, menu_item, window):
+        """Manually restore saved tabs."""
+        try:
+            saved_tabs = TabsManager.load_tabs()
+            if saved_tabs:
+                print(f"Restoring {len(saved_tabs)} tabs")
+                # Simple approach: open each saved location in new windows
+                import subprocess
+                for tab_data in saved_tabs:
+                    path = tab_data.get('path', '')
+                    if path and os.path.exists(path):
+                        print(f"Opening: {path}")
+                        subprocess.Popen(['nemo', path], 
+                                       stdout=subprocess.DEVNULL, 
+                                       stderr=subprocess.DEVNULL)
+            else:
+                print("No saved tabs found")
+        except Exception as e:
+            print(f"Error in manual restore: {e}")'
+  Extracted path: '#!/usr/bin/env python3
+
+import gi
+gi.require_version('Nemo', '3.0')
+from gi.repository import Nemo, GObject
+import os
+import json
+import time
+
+CONFIG_DIR = os.path.expanduser("~/.config/nemo")
+TABS_FILE = os.path.join(CONFIG_DIR, "restore-tabs.json")
+
+class TabsManager:
+    """Handles saving and loading tab information."""
+    
+    @staticmethod
+    def save_tabs(tabs_data):
+        """Save tabs data to JSON file."""
+        try:
+            os.makedirs(CONFIG_DIR, exist_ok=True)
+            with open(TABS_FILE, 'w') as f:
+                json.dump(tabs_data, f, indent=2)
+            return True
+        except Exception as e:
+            print(f"Failed to save tabs: {e}")
+            return False
+    
+    @staticmethod
+    def load_tabs():
+        """Load tabs data from JSON file."""
+        try:
+            if os.path.exists(TABS_FILE):
+                with open(TABS_FILE, 'r') as f:
+                    return json.load(f)
+        except Exception as e:
+            print(f"Failed to load tabs: {e}")
+        return []
+
+class NemoRestoreTabsExtension(GObject.GObject, Nemo.MenuProvider):
+    """Simple extension for tab saving and restoration."""
+    
+    def __init__(self):
+        """Initialize the extension."""
+        super().__init__()
+        print("Nemo Restore Tabs extension initialized")
+    
+    def get_background_items(self, window, current_folder):
+        """Return context menu items for background clicks."""
+        if not current_folder or current_folder.get_uri_scheme() != 'file':
+            return []
+        
+        items = []
+        
+        # Manual save option
+        save_item = Nemo.MenuItem(
+            name='NemoRestoreTabs::manual_save',
+            label='Save Current Tabs Now',
+            tip='Manually save all currently open tabs'
+        )
+        save_item.connect('activate', self._manual_save_tabs, current_folder)
+        items.append(save_item)
+        
+        # Manual restore option
+        restore_item = Nemo.MenuItem(
+            name='NemoRestoreTabs::manual_restore',
+            label='Restore Saved Tabs',
+            tip='Restore previously saved tabs'
+        )
+        restore_item.connect('activate', self._manual_restore_tabs, window)
+        items.append(restore_item)
+        
+        return items
+    
+    def _manual_save_tabs(self, menu_item, current_folder):
+        """Manually save the current tab."""
+        try:
+            # Get the path from current_folder parameter
+            if current_folder and hasattr(current_folder, 'get_path'):
+                path = current_folder.get_path()
+                if path:
+                    tabs_data = [{
+                        'path': path,
+                        'timestamp': time.time(),
+                        'active': True
+                    }]
+                    
+                    if TabsManager.save_tabs(tabs_data):
+                        print(f"Saved current location: {path}")
+                    else:
+                        print("Failed to save tabs")
+                    return
+            
+            print("Could not determine current location from folder")
+        except Exception as e:
+            print(f"Error in manual save: {e}")
+    
+    def _manual_restore_tabs(self, menu_item, window):
+        """Manually restore saved tabs."""
+        try:
+            saved_tabs = TabsManager.load_tabs()
+            if saved_tabs:
+                print(f"Restoring {len(saved_tabs)} tabs")
+                # Simple approach: open each saved location in new windows
+                import subprocess
+                for tab_data in saved_tabs:
+                    path = tab_data.get('path', '')
+                    if path and os.path.exists(path):
+                        print(f"Opening: {path}")
+                        subprocess.Popen(['nemo', path], 
+                                       stdout=subprocess.DEVNULL, 
+                                       stderr=subprocess.DEVNULL)
+            else:
+                print("No saved tabs found")
+        except Exception as e:
+            print(f"Error in manual restore: {e}")'
+  ❌ FAILED: F6 gave invalid path
+
+--- Testing Ctrl+Shift+L (ctrl+shift+l) ---
+  Clipboard: '#!/usr/bin/env python3
+
+import gi
+gi.require_version('Nemo', '3.0')
+from gi.repository import Nemo, GObject
+import os
+import json
+import time
+
+CONFIG_DIR = os.path.expanduser("~/.config/nemo")
+TABS_FILE = os.path.join(CONFIG_DIR, "restore-tabs.json")
+
+class TabsManager:
+    """Handles saving and loading tab information."""
+    
+    @staticmethod
+    def save_tabs(tabs_data):
+        """Save tabs data to JSON file."""
+        try:
+            os.makedirs(CONFIG_DIR, exist_ok=True)
+            with open(TABS_FILE, 'w') as f:
+                json.dump(tabs_data, f, indent=2)
+            return True
+        except Exception as e:
+            print(f"Failed to save tabs: {e}")
+            return False
+    
+    @staticmethod
+    def load_tabs():
+        """Load tabs data from JSON file."""
+        try:
+            if os.path.exists(TABS_FILE):
+                with open(TABS_FILE, 'r') as f:
+                    return json.load(f)
+        except Exception as e:
+            print(f"Failed to load tabs: {e}")
+        return []
+
+class NemoRestoreTabsExtension(GObject.GObject, Nemo.MenuProvider):
+    """Simple extension for tab saving and restoration."""
+    
+    def __init__(self):
+        """Initialize the extension."""
+        super().__init__()
+        print("Nemo Restore Tabs extension initialized")
+    
+    def get_background_items(self, window, current_folder):
+        """Return context menu items for background clicks."""
+        if not current_folder or current_folder.get_uri_scheme() != 'file':
+            return []
+        
+        items = []
+        
+        # Manual save option
+        save_item = Nemo.MenuItem(
+            name='NemoRestoreTabs::manual_save',
+            label='Save Current Tabs Now',
+            tip='Manually save all currently open tabs'
+        )
+        save_item.connect('activate', self._manual_save_tabs, current_folder)
+        items.append(save_item)
+        
+        # Manual restore option
+        restore_item = Nemo.MenuItem(
+            name='NemoRestoreTabs::manual_restore',
+            label='Restore Saved Tabs',
+            tip='Restore previously saved tabs'
+        )
+        restore_item.connect('activate', self._manual_restore_tabs, window)
+        items.append(restore_item)
+        
+        return items
+    
+    def _manual_save_tabs(self, menu_item, current_folder):
+        """Manually save the current tab."""
+        try:
+            # Get the path from current_folder parameter
+            if current_folder and hasattr(current_folder, 'get_path'):
+                path = current_folder.get_path()
+                if path:
+                    tabs_data = [{
+                        'path': path,
+                        'timestamp': time.time(),
+                        'active': True
+                    }]
+                    
+                    if TabsManager.save_tabs(tabs_data):
+                        print(f"Saved current location: {path}")
+                    else:
+                        print("Failed to save tabs")
+                    return
+            
+            print("Could not determine current location from folder")
+        except Exception as e:
+            print(f"Error in manual save: {e}")
+    
+    def _manual_restore_tabs(self, menu_item, window):
+        """Manually restore saved tabs."""
+        try:
+            saved_tabs = TabsManager.load_tabs()
+            if saved_tabs:
+                print(f"Restoring {len(saved_tabs)} tabs")
+                # Simple approach: open each saved location in new windows
+                import subprocess
+                for tab_data in saved_tabs:
+                    path = tab_data.get('path', '')
+                    if path and os.path.exists(path):
+                        print(f"Opening: {path}")
+                        subprocess.Popen(['nemo', path], 
+                                       stdout=subprocess.DEVNULL, 
+                                       stderr=subprocess.DEVNULL)
+            else:
+                print("No saved tabs found")
+        except Exception as e:
+            print(f"Error in manual restore: {e}")'
+  Extracted path: '#!/usr/bin/env python3
+
+import gi
+gi.require_version('Nemo', '3.0')
+from gi.repository import Nemo, GObject
+import os
+import json
+import time
+
+CONFIG_DIR = os.path.expanduser("~/.config/nemo")
+TABS_FILE = os.path.join(CONFIG_DIR, "restore-tabs.json")
+
+class TabsManager:
+    """Handles saving and loading tab information."""
+    
+    @staticmethod
+    def save_tabs(tabs_data):
+        """Save tabs data to JSON file."""
+        try:
+            os.makedirs(CONFIG_DIR, exist_ok=True)
+            with open(TABS_FILE, 'w') as f:
+                json.dump(tabs_data, f, indent=2)
+            return True
+        except Exception as e:
+            print(f"Failed to save tabs: {e}")
+            return False
+    
+    @staticmethod
+    def load_tabs():
+        """Load tabs data from JSON file."""
+        try:
+            if os.path.exists(TABS_FILE):
+                with open(TABS_FILE, 'r') as f:
+                    return json.load(f)
+        except Exception as e:
+            print(f"Failed to load tabs: {e}")
+        return []
+
+class NemoRestoreTabsExtension(GObject.GObject, Nemo.MenuProvider):
+    """Simple extension for tab saving and restoration."""
+    
+    def __init__(self):
+        """Initialize the extension."""
+        super().__init__()
+        print("Nemo Restore Tabs extension initialized")
+    
+    def get_background_items(self, window, current_folder):
+        """Return context menu items for background clicks."""
+        if not current_folder or current_folder.get_uri_scheme() != 'file':
+            return []
+        
+        items = []
+        
+        # Manual save option
+        save_item = Nemo.MenuItem(
+            name='NemoRestoreTabs::manual_save',
+            label='Save Current Tabs Now',
+            tip='Manually save all currently open tabs'
+        )
+        save_item.connect('activate', self._manual_save_tabs, current_folder)
+        items.append(save_item)
+        
+        # Manual restore option
+        restore_item = Nemo.MenuItem(
+            name='NemoRestoreTabs::manual_restore',
+            label='Restore Saved Tabs',
+            tip='Restore previously saved tabs'
+        )
+        restore_item.connect('activate', self._manual_restore_tabs, window)
+        items.append(restore_item)
+        
+        return items
+    
+    def _manual_save_tabs(self, menu_item, current_folder):
+        """Manually save the current tab."""
+        try:
+            # Get the path from current_folder parameter
+            if current_folder and hasattr(current_folder, 'get_path'):
+                path = current_folder.get_path()
+                if path:
+                    tabs_data = [{
+                        'path': path,
+                        'timestamp': time.time(),
+                        'active': True
+                    }]
+                    
+                    if TabsManager.save_tabs(tabs_data):
+                        print(f"Saved current location: {path}")
+                    else:
+                        print("Failed to save tabs")
+                    return
+            
+            print("Could not determine current location from folder")
+        except Exception as e:
+            print(f"Error in manual save: {e}")
+    
+    def _manual_restore_tabs(self, menu_item, window):
+        """Manually restore saved tabs."""
+        try:
+            saved_tabs = TabsManager.load_tabs()
+            if saved_tabs:
+                print(f"Restoring {len(saved_tabs)} tabs")
+                # Simple approach: open each saved location in new windows
+                import subprocess
+                for tab_data in saved_tabs:
+                    path = tab_data.get('path', '')
+                    if path and os.path.exists(path):
+                        print(f"Opening: {path}")
+                        subprocess.Popen(['nemo', path], 
+                                       stdout=subprocess.DEVNULL, 
+                                       stderr=subprocess.DEVNULL)
+            else:
+                print("No saved tabs found")
+        except Exception as e:
+            print(f"Error in manual restore: {e}")'
+  ❌ FAILED: Ctrl+Shift+L gave invalid path
+
+--- Testing Alt+Shift+L (alt+shift+l) ---
+  Clipboard: '#!/usr/bin/env python3
+
+import gi
+gi.require_version('Nemo', '3.0')
+from gi.repository import Nemo, GObject
+import os
+import json
+import time
+
+CONFIG_DIR = os.path.expanduser("~/.config/nemo")
+TABS_FILE = os.path.join(CONFIG_DIR, "restore-tabs.json")
+
+class TabsManager:
+    """Handles saving and loading tab information."""
+    
+    @staticmethod
+    def save_tabs(tabs_data):
+        """Save tabs data to JSON file."""
+        try:
+            os.makedirs(CONFIG_DIR, exist_ok=True)
+            with open(TABS_FILE, 'w') as f:
+                json.dump(tabs_data, f, indent=2)
+            return True
+        except Exception as e:
+            print(f"Failed to save tabs: {e}")
+            return False
+    
+    @staticmethod
+    def load_tabs():
+        """Load tabs data from JSON file."""
+        try:
+            if os.path.exists(TABS_FILE):
+                with open(TABS_FILE, 'r') as f:
+                    return json.load(f)
+        except Exception as e:
+            print(f"Failed to load tabs: {e}")
+        return []
+
+class NemoRestoreTabsExtension(GObject.GObject, Nemo.MenuProvider):
+    """Simple extension for tab saving and restoration."""
+    
+    def __init__(self):
+        """Initialize the extension."""
+        super().__init__()
+        print("Nemo Restore Tabs extension initialized")
+    
+    def get_background_items(self, window, current_folder):
+        """Return context menu items for background clicks."""
+        if not current_folder or current_folder.get_uri_scheme() != 'file':
+            return []
+        
+        items = []
+        
+        # Manual save option
+        save_item = Nemo.MenuItem(
+            name='NemoRestoreTabs::manual_save',
+            label='Save Current Tabs Now',
+            tip='Manually save all currently open tabs'
+        )
+        save_item.connect('activate', self._manual_save_tabs, current_folder)
+        items.append(save_item)
+        
+        # Manual restore option
+        restore_item = Nemo.MenuItem(
+            name='NemoRestoreTabs::manual_restore',
+            label='Restore Saved Tabs',
+            tip='Restore previously saved tabs'
+        )
+        restore_item.connect('activate', self._manual_restore_tabs, window)
+        items.append(restore_item)
+        
+        return items
+    
+    def _manual_save_tabs(self, menu_item, current_folder):
+        """Manually save the current tab."""
+        try:
+            # Get the path from current_folder parameter
+            if current_folder and hasattr(current_folder, 'get_path'):
+                path = current_folder.get_path()
+                if path:
+                    tabs_data = [{
+                        'path': path,
+                        'timestamp': time.time(),
+                        'active': True
+                    }]
+                    
+                    if TabsManager.save_tabs(tabs_data):
+                        print(f"Saved current location: {path}")
+                    else:
+                        print("Failed to save tabs")
+                    return
+            
+            print("Could not determine current location from folder")
+        except Exception as e:
+            print(f"Error in manual save: {e}")
+    
+    def _manual_restore_tabs(self, menu_item, window):
+        """Manually restore saved tabs."""
+        try:
+            saved_tabs = TabsManager.load_tabs()
+            if saved_tabs:
+                print(f"Restoring {len(saved_tabs)} tabs")
+                # Simple approach: open each saved location in new windows
+                import subprocess
+                for tab_data in saved_tabs:
+                    path = tab_data.get('path', '')
+                    if path and os.path.exists(path):
+                        print(f"Opening: {path}")
+                        subprocess.Popen(['nemo', path], 
+                                       stdout=subprocess.DEVNULL, 
+                                       stderr=subprocess.DEVNULL)
+            else:
+                print("No saved tabs found")
+        except Exception as e:
+            print(f"Error in manual restore: {e}")'
+  Extracted path: '#!/usr/bin/env python3
+
+import gi
+gi.require_version('Nemo', '3.0')
+from gi.repository import Nemo, GObject
+import os
+import json
+import time
+
+CONFIG_DIR = os.path.expanduser("~/.config/nemo")
+TABS_FILE = os.path.join(CONFIG_DIR, "restore-tabs.json")
+
+class TabsManager:
+    """Handles saving and loading tab information."""
+    
+    @staticmethod
+    def save_tabs(tabs_data):
+        """Save tabs data to JSON file."""
+        try:
+            os.makedirs(CONFIG_DIR, exist_ok=True)
+            with open(TABS_FILE, 'w') as f:
+                json.dump(tabs_data, f, indent=2)
+            return True
+        except Exception as e:
+            print(f"Failed to save tabs: {e}")
+            return False
+    
+    @staticmethod
+    def load_tabs():
+        """Load tabs data from JSON file."""
+        try:
+            if os.path.exists(TABS_FILE):
+                with open(TABS_FILE, 'r') as f:
+                    return json.load(f)
+        except Exception as e:
+            print(f"Failed to load tabs: {e}")
+        return []
+
+class NemoRestoreTabsExtension(GObject.GObject, Nemo.MenuProvider):
+    """Simple extension for tab saving and restoration."""
+    
+    def __init__(self):
+        """Initialize the extension."""
+        super().__init__()
+        print("Nemo Restore Tabs extension initialized")
+    
+    def get_background_items(self, window, current_folder):
+        """Return context menu items for background clicks."""
+        if not current_folder or current_folder.get_uri_scheme() != 'file':
+            return []
+        
+        items = []
+        
+        # Manual save option
+        save_item = Nemo.MenuItem(
+            name='NemoRestoreTabs::manual_save',
+            label='Save Current Tabs Now',
+            tip='Manually save all currently open tabs'
+        )
+        save_item.connect('activate', self._manual_save_tabs, current_folder)
+        items.append(save_item)
+        
+        # Manual restore option
+        restore_item = Nemo.MenuItem(
+            name='NemoRestoreTabs::manual_restore',
+            label='Restore Saved Tabs',
+            tip='Restore previously saved tabs'
+        )
+        restore_item.connect('activate', self._manual_restore_tabs, window)
+        items.append(restore_item)
+        
+        return items
+    
+    def _manual_save_tabs(self, menu_item, current_folder):
+        """Manually save the current tab."""
+        try:
+            # Get the path from current_folder parameter
+            if current_folder and hasattr(current_folder, 'get_path'):
+                path = current_folder.get_path()
+                if path:
+                    tabs_data = [{
+                        'path': path,
+                        'timestamp': time.time(),
+                        'active': True
+                    }]
+                    
+                    if TabsManager.save_tabs(tabs_data):
+                        print(f"Saved current location: {path}")
+                    else:
+                        print("Failed to save tabs")
+                    return
+            
+            print("Could not determine current location from folder")
+        except Exception as e:
+            print(f"Error in manual save: {e}")
+    
+    def _manual_restore_tabs(self, menu_item, window):
+        """Manually restore saved tabs."""
+        try:
+            saved_tabs = TabsManager.load_tabs()
+            if saved_tabs:
+                print(f"Restoring {len(saved_tabs)} tabs")
+                # Simple approach: open each saved location in new windows
+                import subprocess
+                for tab_data in saved_tabs:
+                    path = tab_data.get('path', '')
+                    if path and os.path.exists(path):
+                        print(f"Opening: {path}")
+                        subprocess.Popen(['nemo', path], 
+                                       stdout=subprocess.DEVNULL, 
+                                       stderr=subprocess.DEVNULL)
+            else:
+                print("No saved tabs found")
+        except Exception as e:
+            print(f"Error in manual restore: {e}")'
+  ❌ FAILED: Alt+Shift+L gave invalid path
+
+=== ADDRESS BAR TEST COMPLETE ===
